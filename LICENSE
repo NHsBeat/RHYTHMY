@@ -1,0 +1,72 @@
+RHYTHMY SOURCE-AVAILABLE LICENSE
+Version 1.0, June 2026
+
+Copyright (c) 2026 Haz (haznekhay@gmail.com)
+
+TERMS AND CONDITIONS
+
+1. DEFINITIONS
+
+"Software" means the RHYTHMY source code, assets, and related files covered
+by this license.
+
+"Fork" means any derivative work, modification, or copy of the Software.
+
+"Distribute" means to make available to the public, including via download,
+release, or repository hosting.
+
+"Donation Link" means the following URL:
+https://boosty.to/haz  (or any donation page maintained by the original author
+and listed in the official repository's README.md)
+
+2. GRANT OF RIGHTS
+
+Subject to the conditions below, you are granted a worldwide, royalty-free,
+non-exclusive license to:
+
+  a) View, study, and compile the Software for personal, non-commercial use.
+  b) Create Forks of the Software.
+  c) Distribute Forks of the Software.
+
+3. CONDITIONS
+
+Any Fork that is Distributed must comply with ALL of the following:
+
+  a) FREE OF CHARGE. The Fork must be made available strictly free of charge.
+     You may not charge money, require payment, subscriptions, tokens, or any
+     form of compensation for access to the Fork or any binaries built from it.
+
+  b) DONATION LINK. Every publicly accessible page, repository, release, or
+     download location for the Fork must display a clearly visible link to the
+     original author's Donation Link (see Section 1). The link must be labeled
+     in a way that makes it clear it is a donation link supporting the original
+     author. Removing or obscuring this link is a violation of this license.
+
+  c) ATTRIBUTION. The Fork must retain this LICENSE file unmodified and include
+     a prominent notice stating that it is derived from RHYTHMY by Haz.
+
+  d) SAME TERMS. The Fork must be distributed under this same license, or a
+     license that imposes at least the same conditions (free of charge,
+     donation link, attribution).
+
+4. NO COMMERCIAL USE
+
+The Software and any Forks may not be used for commercial purposes. Commercial
+purposes include, but are not limited to: selling the Software or Forks,
+bundling with a paid product, using in a commercial service, or any use
+primarily intended for commercial advantage or monetary compensation.
+
+5. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED. THE AUTHOR IS NOT LIABLE FOR ANY DAMAGES ARISING FROM USE OF THE
+SOFTWARE.
+
+6. TERMINATION
+
+Your rights under this license terminate automatically if you violate any of
+its conditions. Reinstating compliance does not automatically restore your
+rights.
+
+---
+For questions or permissions beyond this license, contact: haznekhay@gmail.com

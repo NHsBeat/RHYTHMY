@@ -1,0 +1,56 @@
+# Build output directories
+build/
+build_out/
+build_linux/
+build_aarch64/
+build_bootlin/
+build_r36s/
+
+# CMake generated files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!cmake/
+
+# Compiled binaries
+*.elf
+*.exe
+*.out
+rhythmy
+rhythmy_debug
+
+# Object files
+*.o
+*.a
+*.so
+
+# IDE / editor files
+.vscode/
+.idea/
+*.user
+*.suo
+*.sdf
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Packaging output
+packaging/*.ipk
+packaging/*.tar.gz
+packaging/*.zip
+release/
+
+# Audio samples (private — not for distribution)
+Audio/
+
+# User data / save files
+*.rhy
+drum_favs.dat
+projects/
+
+# WSL setup artifacts
+*.sh.log
