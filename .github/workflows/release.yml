@@ -16,21 +16,23 @@ permissions:
   contents: write   # required to create the GitHub Release
 
 jobs:
-  # ── Cross-compile for R36S (aarch64, GLIBC <= 2.30 via Debian Buster sysroot) ─
+  # ── Cross-compile for R36S with the Bootlin toolchain (GCC 8.4 / glibc 2.30) ──
+  # The Bootlin toolchain bundles a matching glibc, so the binary needs GLIBC
+  # <= 2.30 regardless of the host runner's libc. SDL2 (arm64) comes from a small
+  # Debian Buster sysroot built with debootstrap.
   build-r36s:
     name: Build R36S installers
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install cross toolchain + debootstrap
+      - name: Install host build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             cmake \
-            g++-aarch64-linux-gnu \
-            binutils-aarch64-linux-gnu \
             pkg-config \
+            wget \
             debootstrap \
             qemu-user-static \
             binfmt-support
@@ -42,10 +44,8 @@ jobs:
         run: |
           set -e
           SYSROOT=/opt/buster-arm64
-          # Bootstrap a minimal arm64 Buster root (GLIBC 2.28 — below the device's 2.30)
           sudo debootstrap --arch=arm64 --variant=minbase \
             buster "$SYSROOT" http://archive.debian.org/debian
-          # qemu so we can run arm64 apt inside the chroot
           sudo cp /usr/bin/qemu-aarch64-static "$SYSROOT/usr/bin/"
           printf 'deb http://archive.debian.org/debian buster main\n' \
             | sudo tee "$SYSROOT/etc/apt/sources.list"
@@ -54,10 +54,25 @@ jobs:
             libsdl2-dev pkg-config
           echo "SDL2 header: $(ls "$SYSROOT/usr/include/SDL2/SDL.h")"
 
-      - name: Configure (cross, R36S)
+      - name: Download Bootlin toolchain (GCC 8.4 / glibc 2.30)
+        run: bash setup_bootlin.sh
+
+      - name: Copy SDL2 from Buster into the Bootlin sysroot
+        run: |
+          set -e
+          TC="$HOME/toolchains/aarch64--glibc--stable-2020.02-2"
+          SYS="$TC/aarch64-buildroot-linux-gnu/sysroot"
+          BUSTER=/opt/buster-arm64
+          mkdir -p "$SYS/usr/include" "$SYS/usr/lib/aarch64-linux-gnu/pkgconfig"
+          sudo cp -a "$BUSTER/usr/include/SDL2"                            "$SYS/usr/include/"
+          sudo cp -a "$BUSTER"/usr/lib/aarch64-linux-gnu/libSDL2*.so*      "$SYS/usr/lib/aarch64-linux-gnu/"
+          sudo cp -a "$BUSTER/usr/lib/aarch64-linux-gnu/pkgconfig/sdl2.pc" "$SYS/usr/lib/aarch64-linux-gnu/pkgconfig/"
+          echo "SDL2 in Bootlin sysroot: $(ls "$SYS/usr/include/SDL2/SDL.h")"
+
+      - name: Configure (cross, R36S, Bootlin)
         run: |
           cmake -B build_aarch64 -S . \
-            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-r36s-aarch64-sysroot.cmake \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-r36s-bootlin.cmake \
             -DCMAKE_BUILD_TYPE=Release \
             -DR36S_BUILD=ON
 
@@ -66,11 +81,12 @@ jobs:
 
       - name: Verify GLIBC requirements (must all be <= 2.30)
         run: |
+          NM="$HOME/toolchains/aarch64--glibc--stable-2020.02-2/bin/aarch64-linux-nm"
           echo "GLIBC symbols required by the binary:"
-          aarch64-linux-gnu-nm -D build_aarch64/rhythmy \
+          "$NM" -D build_aarch64/rhythmy \
             | grep -o "GLIBC_[0-9.]*" | sort -V | uniq
           # Fail the build if anything newer than 2.30 leaked in
-          BAD=$(aarch64-linux-gnu-nm -D build_aarch64/rhythmy \
+          BAD=$("$NM" -D build_aarch64/rhythmy \
             | grep -oE "GLIBC_2\.(3[1-9]|[4-9][0-9])" | sort -u || true)
           if [ -n "$BAD" ]; then
             echo "ERROR: binary requires GLIBC newer than 2.30:"; echo "$BAD"; exit 1
