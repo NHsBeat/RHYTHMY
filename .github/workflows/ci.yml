@@ -1,0 +1,59 @@
+name: CI
+
+# Build verification on every push and pull request.
+# This only checks that the code compiles — it does not publish anything.
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+  workflow_dispatch:
+
+jobs:
+  # ── Native Linux build (desktop / dev path) ────────────────────────────────
+  build-linux:
+    name: Build (Linux x64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential pkg-config libsdl2-dev
+
+      - name: Configure
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Check binary exists
+        run: test -f build/rhythmy && echo "OK - build/rhythmy produced"
+
+  # ── Windows build (MSVC, bundled SDL2) ─────────────────────────────────────
+  build-windows:
+    name: Build (Windows x64)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -S . -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Check binary exists
+        run: |
+          if (Test-Path build/Release/rhythmy.exe) {
+            Write-Host "OK - rhythmy.exe produced"
+          } else {
+            exit 1
+          }

@@ -1,6 +1,11 @@
 # RHYTHMY
 
+[![CI](https://github.com/NHsBeat/RHYTHMY/actions/workflows/ci.yml/badge.svg)](https://github.com/NHsBeat/RHYTHMY/actions/workflows/ci.yml)
+[![Release](https://github.com/NHsBeat/RHYTHMY/actions/workflows/release.yml/badge.svg)](https://github.com/NHsBeat/RHYTHMY/actions/workflows/release.yml)
+
 A portable DAW (Digital Audio Workstation) designed for handheld gaming devices like the R36S, built with C++17, SDL2, and miniaudio.
+
+**Download:** grab the latest installers from the [Releases page](https://github.com/NHsBeat/RHYTHMY/releases).
 
 ## Features
 

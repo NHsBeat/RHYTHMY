@@ -1,0 +1,158 @@
+name: Release
+
+# Triggered when you push a version tag like v1.0.0.
+# Builds the R36S installers + a Windows zip and publishes them as a GitHub Release.
+#
+# How to cut a release (see RELEASING.md):
+#   git tag v1.0.0
+#   git push origin v1.0.0
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write   # required to create the GitHub Release
+
+jobs:
+  # ── Cross-compile for R36S (aarch64, GLIBC <= 2.30 via Debian Buster sysroot) ─
+  build-r36s:
+    name: Build R36S installers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cross toolchain + debootstrap
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            g++-aarch64-linux-gnu \
+            binutils-aarch64-linux-gnu \
+            pkg-config \
+            debootstrap \
+            qemu-user-static \
+            binfmt-support
+
+      - name: Register qemu binfmt handlers
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build Debian Buster arm64 sysroot with SDL2
+        run: |
+          set -e
+          SYSROOT=/opt/buster-arm64
+          # Bootstrap a minimal arm64 Buster root (GLIBC 2.28 — below the device's 2.30)
+          sudo debootstrap --arch=arm64 --variant=minbase \
+            buster "$SYSROOT" http://archive.debian.org/debian
+          # qemu so we can run arm64 apt inside the chroot
+          sudo cp /usr/bin/qemu-aarch64-static "$SYSROOT/usr/bin/"
+          printf 'deb http://archive.debian.org/debian buster main\n' \
+            | sudo tee "$SYSROOT/etc/apt/sources.list"
+          sudo chroot "$SYSROOT" apt-get update -qq
+          sudo chroot "$SYSROOT" apt-get install -y --no-install-recommends \
+            libsdl2-dev pkg-config
+          echo "SDL2 header: $(ls "$SYSROOT/usr/include/SDL2/SDL.h")"
+
+      - name: Configure (cross, R36S)
+        run: |
+          cmake -B build_aarch64 -S . \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-r36s-aarch64-sysroot.cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DR36S_BUILD=ON
+
+      - name: Build
+        run: cmake --build build_aarch64 -j$(nproc)
+
+      - name: Verify GLIBC requirements (must all be <= 2.30)
+        run: |
+          echo "GLIBC symbols required by the binary:"
+          aarch64-linux-gnu-nm -D build_aarch64/rhythmy \
+            | grep -o "GLIBC_[0-9.]*" | sort -V | uniq
+          # Fail the build if anything newer than 2.30 leaked in
+          BAD=$(aarch64-linux-gnu-nm -D build_aarch64/rhythmy \
+            | grep -oE "GLIBC_2\.(3[1-9]|[4-9][0-9])" | sort -u || true)
+          if [ -n "$BAD" ]; then
+            echo "ERROR: binary requires GLIBC newer than 2.30:"; echo "$BAD"; exit 1
+          fi
+          echo "OK: all GLIBC requirements <= 2.30"
+
+      - name: Build self-extracting installers
+        run: |
+          mkdir -p build_out
+          cp build_aarch64/rhythmy build_out/rhythmy
+          bash packaging/make_installer.sh
+
+      - name: Upload installers as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: r36s-installers
+          path: |
+            Install_RHYTHMY_SD1.sh
+            Install_RHYTHMY_SD2.sh
+
+  # ── Windows desktop build (convenience download) ───────────────────────────
+  build-windows:
+    name: Build Windows zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -B build -S . -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Package zip
+        run: |
+          $dir = "RHYTHMY-windows-x64"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          Copy-Item build/Release/rhythmy.exe $dir/
+          Copy-Item build/Release/SDL2.dll $dir/
+          Copy-Item -Recurse build/Release/assets $dir/assets
+          Compress-Archive -Path "$dir/*" -DestinationPath RHYTHMY-windows-x64.zip -Force
+
+      - name: Upload Windows zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-zip
+          path: RHYTHMY-windows-x64.zip
+
+  # ── Publish the GitHub Release with all artifacts attached ─────────────────
+  release:
+    name: Publish release
+    needs: [ build-r36s, build-windows ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: RHYTHMY ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## RHYTHMY ${{ github.ref_name }}
+
+            ### R36S install
+            Download **Install_RHYTHMY_SD1.sh** (one SD card) or **Install_RHYTHMY_SD2.sh**
+            (two SD cards), copy it to `/roms/ports/` on the SD card, and run it from the
+            Ports menu (press **A**). Reboot EmulationStation — RHYTHMY appears in Ports.
+
+            ### Windows
+            Download **RHYTHMY-windows-x64.zip**, extract, run `rhythmy.exe`.
+
+            ---
+            🎵 If you enjoy RHYTHMY, please support development:
+            **https://donate.stream/woozyfromjapan**
+
+            Forks are welcome but must stay free and keep the donation link — see the LICENSE.
+          files: |
+            dist/Install_RHYTHMY_SD1.sh
+            dist/Install_RHYTHMY_SD2.sh
+            dist/RHYTHMY-windows-x64.zip
