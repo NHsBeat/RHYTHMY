@@ -6,13 +6,11 @@ build_aarch64/
 build_bootlin/
 build_r36s/
 
-# CMake generated files
+# CMake generated files (these only appear inside the ignored build dirs above,
+# but listed explicitly in case cmake is ever run from the source root)
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
-*.cmake
-!cmake/
 
 # Compiled binaries
 *.elf
